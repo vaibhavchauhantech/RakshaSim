@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RakshaSim - Interactive Simulation</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #ff4444;
+        }
+        .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff6666;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .event-text {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+        .choices button {
+            margin: 8px 0;
+            width: 100%;
+        }
+        .log {
+            margin-top: 30px;
+            background: #222;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            font-family: monospace;
+            color: #ff6666;
+        }
+        .status {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, {{ name }}! Ransomware Simulation</h2>
+        <div class="timer" id="timer">Time Left: 05:00</div>
+        <div class="event-text" id="event-text">Loading simulation...</div>
+        <div class="choices" id="choices"></div>
+
+        <div class="status" id="status"></div>
+
+        <h5>Simulation Log:</h5>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // Simulation scenario example (could load from backend via AJAX)
+        const scenario = {
+            title: "Police HQ Breach",
+            timeLimit: 300,  // seconds, 5 min
+            currentNode: "start",
+            nodes: {
+                "start": {
+                    text: "Suspicious Email Received with an attachment. What do you do?",
+                    choices: [
+                        { text: "Open the attachment", next: "ransomware_exec", consequence: "Malware activated! Encryption starts." },
+                        { text: "Report to IT department", next: "containment", consequence: "Threat contained. Investigation underway." }
+                    ]
+                },
+                "ransomware_exec": {
+                    text: "Ransomware is encrypting files! What next?",
+                    choices: [
+                        { text: "Isolate affected machines", next: "isolate", consequence: "Containment started. Spread slowed." },
+                        { text: "Ignore and continue work", next: "spread", consequence: "Ransomware spreads rapidly!" }
+                    ]
+                },
+                "containment": {
+                    text: "IT investigates and finds ransomware signatures. Next step?",
+                    choices: [
+                        { text: "Start system restore", next: "restore", consequence: "Systems being restored from backup." },
+                        { text: "Wait and monitor", next: "spread", consequence: "Ransomware spreads during delay!" }
+                    ]
+                },
+                "isolate": {
+                    text: "Affected machines isolated. Ransomware stopped spreading.",
+                    choices: [
+                        { text: "Notify authorities", next: "end_good", consequence: "Authorities notified, help on the way." },
+                        { text: "Try decrypting files yourself", next: "end_bad", consequence: "Decryption failed, data lost." }
+                    ]
+                },
+                "spread": {
+                    text: "Ransomware has infected critical systems. Data loss severe.",
+                    choices: [
+                        { text: "Pay ransom", next: "end_bad", consequence: "Data recovered but future risk increased." },
+                        { text: "Rebuild systems", next: "end_good", consequence: "Rebuilding underway, no ransom paid." }
+                    ]
+                },
+                "restore": {
+                    text: "Systems restored successfully.",
+                    choices: [
+                        { text: "Conduct post-incident review", next: "end_good", consequence: "Lessons learned and stronger defenses." },
+                        { text: "Do nothing further", next: "end_bad", consequence: "Vulnerabilities remain unaddressed." }
+                    ]
+                },
+                "end_good": {
+                    text: "Simulation complete. Well done!",
+                    choices: []
+                },
+                "end_bad": {
+                    text: "Simulation complete. Could be improved!",
+                    choices: []
+                }
+            }
+        };
+
+        let timerElement = document.getElementById("timer");
+        let eventText = document.getElementById("event-text");
+        let choicesDiv = document.getElementById("choices");
+        let logDiv = document.getElementById("log");
+        let statusDiv = document.getElementById("status");
+
+        let timeLeft = scenario.timeLimit;
+        let currentNode = scenario.currentNode;
+        let timerInterval;
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                let minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                let seconds = (timeLeft % 60).toString().padStart(2, '0');
+                timerElement.textContent = `Time Left: ${minutes}:${seconds}`;
+
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    statusDiv.textContent = "Time's up! Simulation ended.";
+                    disableChoices();
+                    logAction("Simulation ended due to timeout.");
+                }
+            }, 1000);
+        }
+
+        function logAction(text) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${text}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function disableChoices() {
+            let buttons = choicesDiv.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+        }
+
+        function showNode(nodeKey) {
+            let node = scenario.nodes[nodeKey];
+            eventText.textContent = node.text;
+            choicesDiv.innerHTML = "";
+            statusDiv.textContent = "";
+            currentNode = nodeKey;
+
+            if (node.choices.length === 0) {
+                disableChoices();
+                statusDiv.textContent = "Simulation Ended.";
+                logAction("Simulation ended at final node.");
+                clearInterval(timerInterval);
+                return;
+            }
+
+            node.choices.forEach(choice => {
+                let btn = document.createElement("button");
+                btn.className = "btn btn-danger";
+                btn.textContent = choice.text;
+                btn.onclick = () => {
+                    logAction(`Action: ${choice.text} — ${choice.consequence}`);
+                    showNode(choice.next);
+                };
+                choicesDiv.appendChild(btn);
+            });
+        }
+
+        // Start everything
+        startTimer();
+        showNode(currentNode);
+    </script>
+</body>
+</html>

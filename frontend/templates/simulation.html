@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ransomware Simulator - RakshaSim</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Cytoscape.js -->
+  <script src="https://unpkg.com/cytoscape@3.22.0/dist/cytoscape.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600&family=Roboto&display=swap" rel="stylesheet">
+
+  <style>
+    /* Reset and base */
+    body, html {
+      height: 100%;
+      margin: 0;
+      background: #0f172a; /* Deep navy */
+      font-family: 'Roboto', sans-serif;
+      color: #e0e7ff;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(90deg, #004aad 0%, #002d72 100%);
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .header img {
+      height: 50px;
+      border-radius: 8px;
+      border: 2px solid #e0e7ff;
+    }
+
+    .header h1 {
+      font-family: 'Roboto Slab', serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      letter-spacing: 1.2px;
+      color: #cbd5e1;
+      margin: 0;
+      user-select: none;
+    }
+
+    /* Main container */
+    .container-fluid {
+      padding: 2rem 2rem 3rem;
+    }
+
+    /* Layout */
+    .row.g-4 {
+      gap: 2rem;
+    }
+
+    #cy {
+      width: 100%;
+      height: 650px;
+      border-radius: 18px;
+      box-shadow: 0 0 25px #1e40afcc;
+      background: #111827; /* Dark slate */
+      transition: box-shadow 0.3s ease;
+    }
+
+    #cy:hover {
+      box-shadow: 0 0 40px #3b82f6cc;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background-color: #1e293b; /* Dark slate */
+      padding: 1.5rem 1.8rem;
+      height: 650px;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      box-shadow: 0 0 20px #2563ebaa;
+      user-select: none;
+    }
+
+    .sidebar h5 {
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #60a5fa;
+      margin-bottom: 1.2rem;
+      text-align: center;
+      text-transform: uppercase;
+      border-bottom: 1px solid #2563eb88;
+      padding-bottom: 0.4rem;
+    }
+
+    .btn-action {
+      background: #2563eb;
+      border: none;
+      color: white;
+      font-weight: 600;
+      margin: 8px 0;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 2px 8px #2563ebaa;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      background: #3b82f6;
+      box-shadow: 0 4px 14px #3b82f6cc;
+    }
+
+    .btn-action:disabled {
+      background: #64748b;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Log feed */
+    .log-feed {
+      background: #111827;
+      height: 100%;
+      overflow-y: auto;
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+      box-shadow: inset 0 0 15px #3b82f6cc;
+      color: #60a5fa;
+      margin-top: 2rem;
+      user-select: text;
+      white-space: pre-wrap;
+    }
+
+    .log-feed div {
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    /* Node selected highlight in Cytoscape */
+    .cy-node-selected {
+      border-color: #facc15 !important;
+      border-width: 6px !important;
+      transition: border-width 0.25s ease;
+    }
+
+    /* Additional infection countdown bubble */
+    .infection-timer {
+      position: absolute;
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 2px 6px;
+      border-radius: 8px;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.3s ease;
+      opacity: 0.9;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 992px) {
+      #cy {
+        height: 450px;
+      }
+
+      .sidebar {
+        height: auto;
+        margin-top: 1.5rem;
+      }
+    }
+
+    /* Status tooltip styling override */
+    .cy-tooltip {
+      pointer-events: none;
+      position: absolute;
+      padding: 4px 8px;
+      background: rgba(37, 99, 235, 0.9);
+      color: white;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      font-family: 'Roboto', sans-serif;
+      user-select: none;
+      z-index: 10;
+      white-space: nowrap;
+      transition: opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .cy-tooltip.visible {
+      opacity: 1;
+    }
+
+    /* Summary panel */
+    #summaryPanel {
+      margin-top: 1rem;
+      background-color: #1e293b;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      color: #93c5fd;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 0 15px #2563ebaa;
+      user-select: none;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Header with RakshaSim branding -->
+  <header class="header">
+    <!-- RakshaSim Logo -->
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="RakhaSim Logo" />
+    <h1>Ransomware Simulator</h1>
+  </header>
+
+  <main class="container-fluid">
+    <div class="row g-4">
+      <!-- Simulation Panel -->
+      <section class="col-lg-8 position-relative">
+        <div id="cy" role="region" aria-label="Ransomware attack network simulation"></div>
+        <div id="infectionTimer" class="infection-timer" style="display:none;"></div>
+      </section>
+
+      <!-- Control & Log Sidebar -->
+      <aside class="col-lg-4 d-flex flex-column">
+        <div class="sidebar flex-grow-1 d-flex flex-column">
+          <h5>Action Panel</h5>
+          <button id="isolateBtn" class="btn-action" data-bs-toggle="tooltip" data-bs-placement="right" title="Cuts connection to prevent ransomware spread" disabled>Isolate Node</button>
+          <button id="backupBtn" class="btn-action" data-bs-toggle="tooltip" data-bs-placement="right" title="Restore node to safe backup state" disabled>Restore Backup</button>
+          <button id="quarantineBtn" class="btn-action" data-bs-toggle="tooltip" data-bs-placement="right" title="Temporarily quarantine node to delay infection" disabled>Quarantine Node</button>
+          <button id="ignoreBtn" class="btn-action" data-bs-toggle="tooltip" data-bs-placement="right" title="Take no action — risky move!" disabled>Ignore Threat</button>
+          <button id="resetBtn" class="btn-action mt-auto" style="background:#dc2626; box-shadow: 0 2px 8px #dc2626cc;" data-bs-toggle="tooltip" data-bs-placement="right" title="Start fresh simulation">Reset Simulation</button>
+
+          <h5>Event Logs</h5>
+          <div class="log-feed" id="logFeed" aria-live="polite" aria-atomic="true" tabindex="0"></div>
+
+          <div id="summaryPanel" aria-live="polite" aria-atomic="true" tabindex="0">
+            Infected: 0 | Isolated: 0 | Restored: 0 | Quarantined: 0
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Bootstrap Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Cytoscape.js -->
+  <script src="https://unpkg.com/cytoscape@3.22.0/dist/cytoscape.min.js"></script>
+
+  <!-- Simulation Script -->
+  <script>
+    // Initialize Cytoscape with your existing setup
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color': '#3b82f6',
+            label: 'data(label)',
+            'text-valign': 'center',
+            'color': '#f0f9ff',
+            'font-weight': '600',
+            'text-outline-width': 2,
+            'text-outline-color': '#1e40af',
+            width: 60,
+            height: 60,
+            'border-color': '#1e40af',
+            'border-width': 3,
+            'transition-property': 'background-color, border-color, border-width',
+            'transition-duration': '0.3s',
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 4,
+            'line-color': '#60a5fa',
+            'target-arrow-color': '#60a5fa',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier'
+          }
+        },
+        {
+          selector: '.infected',
+          style: {
+            'background-color': '#dc2626',
+            'text-outline-color': '#991b1b',
+            'border-color': '#991b1b',
+          }
+        },
+        {
+          selector: '.isolated',
+          style: {
+            'background-color': '#475569',
+            'text-outline-color': '#64748b',
+            'border-color': '#64748b',
+            'opacity': 0.6,
+          }
+        },
+        {
+          selector: '.backup-restored',
+          style: {
+            'background-color': '#16a34a',
+            'text-outline-color': '#14532d',
+            'border-color': '#14532d',
+          }
+        },
+        {
+          selector: '.quarantined',
+          style: {
+            'background-color': '#fbbf24',
+            'text-outline-color': '#78350f',
+            'border-color': '#78350f',
+            'opacity': 0.85,
+            'transition-property': 'opacity',
+            'transition-duration': '1s',
+          }
+        },
+        {
+          selector: '.selected',
+          style: {
+            'border-color': '#facc15',
+            'border-width': 6,
+          }
+        }
+      ],
+      elements: {
+        nodes: [
+          { data: { id: 'hq', label: 'Police HQ' }, position: { x: 300, y: 200 } },
+          { data: { id: 'fileserver', label: 'File Server' }, position: { x: 520, y: 140 } },
+          { data: { id: 'payroll', label: 'Payroll' }, position: { x: 520, y: 280 } },
+          { data: { id: 'cctv', label: 'CCTV System' }, position: { x: 740, y: 200 } },
+          { data: { id: 'crimecentral', label: 'Crime Central' }, position: { x: 760, y: 400 } },
+          { data: { id: 'phonecomm', label: 'Phone Comm' }, position: { x: 450, y: 450 } },
+          { data: { id: 'interpol', label: 'Interpol' }, position: { x: 300, y: 460 } },
+          { data: { id: 'otherpolice', label: 'Other Police' }, position: { x: 150, y: 400 } },
+        ],
+        edges: [
+          { data: { source: 'hq', target: 'fileserver' } },
+          { data: { source: 'hq', target: 'payroll' } },
+          { data: { source: 'fileserver', target: 'cctv' } },
+          { data: { source: 'payroll', target: 'cctv' } },
+          { data: { source: 'cctv', target: 'crimecentral' } },
+          { data: { source: 'phonecomm', target: 'crimecentral' } },
+          { data: { source: 'interpol', target: 'phonecomm' } },
+          { data: { source: 'interpol', target: 'otherpolice' } },
+          { data: { source: 'otherpolice', target: 'hq' } },
+        ]
+      },
+      layout: {
+        name: 'preset',
+      }
+    });
+
+    // State tracking for nodes: 'clean', 'infected', 'isolated', 'backupRestored', 'quarantined'
+    let nodeStates = {};
+    cy.nodes().forEach(node => nodeStates[node.id()] = 'clean');
+
+    // Infection timers (for spreading cooldowns)
+    let infectionTimers = {};
+    const infectionCooldown = 6000; // 6 seconds cooldown before next spread from infected node
+    const quarantineDuration = 15000; // 15 seconds quarantine timer
+    const backupRestoreDuration = 3000; // 3 seconds backup restoration delay
+
+    // Statistics counters
+    let stats = {
+      infected: 0,
+      isolated: 0,
+      restored: 0,
+      quarantined: 0,
+    };
+
+    // UI Elements
+    const isolateBtn = document.getElementById('isolateBtn');
+    const backupBtn = document.getElementById('backupBtn');
+    const ignoreBtn = document.getElementById('ignoreBtn');
+    const quarantineBtn = document.getElementById('quarantineBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const logFeed = document.getElementById('logFeed');
+    const summaryPanel = document.getElementById('summaryPanel');
+    const infectionTimerDiv = document.getElementById('infectionTimer');
+
+    // Bootstrap tooltips init
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    // Helper: Update summary stats panel
+    function updateSummary() {
+      summaryPanel.textContent = `Infected: ${stats.infected} | Isolated: ${stats.isolated} | Restored: ${stats.restored} | Quarantined: ${stats.quarantined}`;
+    }
+
+    // Helper: Append message to log feed with timestamp
+    function addLog(message) {
+      const time = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.textContent = `[${time}] ${message}`;
+      logFeed.appendChild(logEntry);
+      logFeed.scrollTop = logFeed.scrollHeight;
+      logFeed.focus();
+    }
+
+    // Reset all nodes to clean state
+    function resetSimulation() {
+      cy.nodes().forEach(node => {
+        node.removeClass('infected isolated backup-restored quarantined selected');
+        nodeStates[node.id()] = 'clean';
+      });
+      stats = { infected: 0, isolated: 0, restored: 0, quarantined: 0 };
+      updateSummary();
+      addLog('Simulation reset. All nodes cleaned.');
+      infectionTimers = {};
+      infectionTimerDiv.style.display = 'none';
+      disableActionButtons();
+    }
+
+    // Disable all action buttons
+    function disableActionButtons() {
+      isolateBtn.disabled = true;
+      backupBtn.disabled = true;
+      ignoreBtn.disabled = true;
+      quarantineBtn.disabled = true;
+    }
+
+    // Enable action buttons depending on node state
+    function updateActionButtons(nodeId) {
+      if (!nodeId) {
+        disableActionButtons();
+        return;
+      }
+      const state = nodeStates[nodeId];
+      // Only enable buttons when node is not isolated or restored, etc.
+      isolateBtn.disabled = (state === 'isolated' || state === 'backupRestored');
+      backupBtn.disabled = (state !== 'infected' && state !== 'quarantined'); // backup only if infected or quarantined
+      ignoreBtn.disabled = false;
+      quarantineBtn.disabled = (state === 'isolated' || state === 'backupRestored' || state === 'quarantined');
+    }
+
+    // Infection spread logic from infected node to neighbors
+    function spreadInfection(node) {
+      const nodeId = node.id();
+
+      if (nodeStates[nodeId] !== 'infected') return; // only infected nodes can spread
+
+      // If node on cooldown, don't spread now
+      if (infectionTimers[nodeId] && infectionTimers[nodeId].active) return;
+
+      // Set cooldown
+      infectionTimers[nodeId] = { active: true, timer: null };
+      let cooldownRemaining = infectionCooldown / 1000;
+
+      // Show infection countdown on node
+      showInfectionCountdown(node, cooldownRemaining);
+
+      infectionTimers[nodeId].timer = setInterval(() => {
+        cooldownRemaining -= 1;
+        if (cooldownRemaining <= 0) {
+          clearInterval(infectionTimers[nodeId].timer);
+          infectionTimers[nodeId].active = false;
+          hideInfectionCountdown();
+          // Try infect neighbors that are clean and not isolated/quarantined
+          const connectedEdges = node.connectedEdges();
+          connectedEdges.forEach(edge => {
+            const targetNode = edge.target();
+            const targetId = targetNode.id();
+            if (nodeStates[targetId] === 'clean') {
+              // Infect the node
+              infectNode(targetNode);
+            } else if (nodeStates[targetId] === 'quarantined') {
+              addLog(`Infection attempt blocked by quarantine on node ${targetNode.data('label')}.`);
+            }
+          });
+        } else {
+          showInfectionCountdown(node, cooldownRemaining);
+        }
+      }, 1000);
+    }
+
+    // Show infection countdown bubble near selected node
+    function showInfectionCountdown(node, seconds) {
+      const pos = node.renderedPosition();
+      infectionTimerDiv.style.top = (pos.y - 40) + 'px';
+      infectionTimerDiv.style.left = (pos.x - 20) + 'px';
+      infectionTimerDiv.textContent = `Infect in ${seconds}s`;
+      infectionTimerDiv.style.display = 'block';
+    }
+
+    // Hide infection countdown bubble
+    function hideInfectionCountdown() {
+      infectionTimerDiv.style.display = 'none';
+    }
+
+    // Infect a node and update UI & stats
+    function infectNode(node) {
+      const nodeId = node.id();
+      if (nodeStates[nodeId] === 'infected' || nodeStates[nodeId] === 'isolated') return;
+
+      node.addClass('infected');
+      nodeStates[nodeId] = 'infected';
+      stats.infected++;
+      updateSummary();
+      addLog(`⚠️ Node "${node.data('label')}" infected by ransomware!`);
+
+      // Start spread from this node
+      spreadInfection(node);
+    }
+
+    // Isolate node — cuts its edges (simulate network isolation)
+    function isolateNode(node) {
+      const nodeId = node.id();
+      if (nodeStates[nodeId] === 'isolated') return;
+
+      nodeStates[nodeId] = 'isolated';
+      node.removeClass('infected quarantined backup-restored');
+      node.addClass('isolated');
+      stats.isolated++;
+      if (stats.infected > 0) stats.infected--;
+      updateSummary();
+      addLog(`🛑 Node "${node.data('label')}" isolated from network.`);
+
+      // Remove edges temporarily to simulate isolation
+      node.connectedEdges().forEach(edge => edge.addClass('isolated'));
+    }
+
+    // Restore backup for infected node (clean and protected for now)
+    function restoreBackup(node) {
+      const nodeId = node.id();
+
+      if (nodeStates[nodeId] !== 'infected' && nodeStates[nodeId] !== 'quarantined') return;
+
+      addLog(`⏳ Restoring backup for node "${node.data('label')}"...`);
+
+      // Disable actions while restoring
+      disableActionButtons();
+
+      // Simulate restore delay
+      setTimeout(() => {
+        nodeStates[nodeId] = 'backupRestored';
+        node.removeClass('infected quarantined isolated');
+        node.addClass('backup-restored');
+        stats.restored++;
+        if (stats.infected > 0) stats.infected--;
+        if (stats.quarantined > 0) stats.quarantined--;
+        updateSummary();
+        addLog(`✅ Node "${node.data('label')}" restored from backup.`);
+
+        updateActionButtons(nodeId);
+      }, backupRestoreDuration);
+    }
+
+    // Quarantine node — temporarily block infection spread attempts
+    function quarantineNode(node) {
+      const nodeId = node.id();
+      if (nodeStates[nodeId] === 'quarantined' || nodeStates[nodeId] === 'isolated' || nodeStates[nodeId] === 'backupRestored') return;
+
+      nodeStates[nodeId] = 'quarantined';
+      node.removeClass('infected isolated backup-restored');
+      node.addClass('quarantined');
+      stats.quarantined++;
+      if (stats.infected > 0) stats.infected--;
+      updateSummary();
+      addLog(`🟡 Node "${node.data('label')}" placed in quarantine.`);
+
+      // Remove quarantine after duration, node returns to clean state
+      setTimeout(() => {
+        if (nodeStates[nodeId] === 'quarantined') {
+          nodeStates[nodeId] = 'clean';
+          node.removeClass('quarantined');
+          stats.quarantined--;
+          updateSummary();
+          addLog(`ℹ️ Node "${node.data('label')}" quarantine ended.`);
+        }
+      }, quarantineDuration);
+    }
+
+    // Ignore action (risk spread)
+    function ignoreNode(node) {
+      addLog(`⚠️ Threat ignored on node "${node.data('label')}". Risk of spread remains.`);
+    }
+
+    // Node selection logic
+    let selectedNodeId = null;
+
+    cy.on('tap', 'node', evt => {
+      const node = evt.target;
+      if (selectedNodeId) {
+        const prevNode = cy.getElementById(selectedNodeId);
+        prevNode.removeClass('selected');
+      }
+      selectedNodeId = node.id();
+      node.addClass('selected');
+
+      updateActionButtons(selectedNodeId);
+      hideInfectionCountdown();
+    });
+
+    // Button event handlers
+    isolateBtn.addEventListener('click', () => {
+      if (!selectedNodeId) return;
+      isolateNode(cy.getElementById(selectedNodeId));
+      updateActionButtons(selectedNodeId);
+    });
+
+    backupBtn.addEventListener('click', () => {
+      if (!selectedNodeId) return;
+      restoreBackup(cy.getElementById(selectedNodeId));
+    });
+
+    quarantineBtn.addEventListener('click', () => {
+      if (!selectedNodeId) return;
+      quarantineNode(cy.getElementById(selectedNodeId));
+      updateActionButtons(selectedNodeId);
+    });
+
+    ignoreBtn.addEventListener('click', () => {
+      if (!selectedNodeId) return;
+      ignoreNode(cy.getElementById(selectedNodeId));
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resetSimulation();
+      selectedNodeId = null;
+    });
+
+    // Initialize simulation
+    resetSimulation();
+
+    // Infect initial node (simulate ransomware start at Police HQ)
+    const initialInfectedNode = cy.getElementById('hq');
+    infectNode(initialInfectedNode);
+    updateActionButtons('hq');
+
+    // Tooltips for nodes - show status on hover
+    cy.nodes().forEach(node => {
+      node.qtip({
+        content: () => {
+          const state = nodeStates[node.id()];
+          const label = node.data('label');
+          return `<strong>${label}</strong><br>Status: <em>${state.charAt(0).toUpperCase() + state.slice(1)}</em>`;
+        },
+        position: {
+          my: 'top center',
+          at: 'bottom center'
+        },
+        style: {
+          classes: 'qtip-bootstrap',
+          tip: {
+            width: 10,
+            height: 8
+          }
+        }
+      });
+    });
+
+    // Accessibility enhancements
+    cy.nodes().forEach(node => {
+      node.data('aria-label', `Node ${node.data('label')} is currently ${nodeStates[node.id()]}`);
+    });
+
+  </script>
+
+  <!-- Include qTip for Cytoscape tooltips -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.css" />
+  
+  <!-- Walkthrough Modal -->
+  <div class="modal fade" id="walkthroughModal" tabindex="-1" aria-labelledby="walkthroughModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-0 rounded-4 shadow-lg">
+        <div class="modal-header border-bottom border-secondary">
+          <h5 class="modal-title" id="walkthroughModalLabel">Welcome to RakshaSim</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>🛡️ <strong>RakshaSim</strong> is a ransomware simulation designed for law enforcement training.</p>
+          <ul>
+            <li><strong>Select</strong> a node by clicking on it.</li>
+            <li><strong>Isolate Node:</strong> Disconnects a node to stop the infection.</li>
+            <li><strong>Restore Backup:</strong> Recovers data on an infected node.</li>
+            <li><strong>Ignore Threat:</strong> Continues without action (not recommended!).</li>
+            <li><strong>Reset Simulation:</strong> Start over from scratch.</li>
+            <li><strong>Quarantine Node:</strong> Temporarily blocks infection spread (new feature).</li>
+          </ul>
+          <p class="mt-3 text-warning">⚠️ Infections spread fast — stay sharp and make decisions quickly!</p>
+        </div>
+        <div class="modal-footer border-top border-secondary">
+          <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Begin Simulation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Show modal on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const walkthrough = new bootstrap.Modal(document.getElementById('walkthroughModal'));
+      walkthrough.show();
+
+      // Add initial logs to set the scene
+      const logFeed = document.getElementById('logFeed');
+      const initialLogs = [
+        "[09:00] Simulation initialized...",
+        "[09:01] Suspicious activity detected on Police HQ...",
+        "[09:02] Possible ransomware attempt originating from Police HQ."
+      ];
+      initialLogs.forEach(log => {
+        const logLine = document.createElement('div');
+        logLine.textContent = log;
+        logFeed.appendChild(logLine);
+      });
+    });
+  </script>
+
+</body>
+</html>

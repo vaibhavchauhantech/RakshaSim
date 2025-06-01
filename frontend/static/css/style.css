@@ -1,0 +1,21 @@
+body {
+  background-color: #121212;
+  color: #f8f9fa;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.btn-outline-warning {
+  padding: 12px 24px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+}
+
+h1, .lead {
+  color: #ffffff;
+  text-shadow: 0 0 10px #00ffff22;
+}

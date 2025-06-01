@@ -1,0 +1,45 @@
+{
+  "start": "intro",
+  "steps": {
+    "intro": {
+      "type": "decision",
+      "text": "A suspicious USB drive is found in the HQ lobby. What do you do?",
+      "choices": {
+        "isolate": {
+          "text": "Isolate the device and analyze it in a sandbox.",
+          "next": "sandbox_analysis"
+        },
+        "plug_in": {
+          "text": "Plug it into a secure machine to inspect manually.",
+          "next": "malware_trigger"
+        }
+      }
+    },
+    "sandbox_analysis": {
+      "type": "decision",
+      "text": "The sandbox shows ransomware activity. What now?",
+      "choices": {
+        "alert_it": {
+          "text": "Alert IT and block all USB drives.",
+          "next": "containment_success"
+        },
+        "ignore": {
+          "text": "Assume it’s just a test and ignore.",
+          "next": "ransomware_spread"
+        }
+      }
+    },
+    "malware_trigger": {
+      "type": "end",
+      "text": "Ransomware executed. Major data breach occurred. Simulation ends."
+    },
+    "containment_success": {
+      "type": "end",
+      "text": "Threat contained. No damage done. Simulation ends."
+    },
+    "ransomware_spread": {
+      "type": "end",
+      "text": "Ignoring cost the department dearly. Ransomware spread rapidly. Simulation ends."
+    }
+  }
+}
