@@ -98,7 +98,7 @@ http://localhost:5000/
 
 - Go to `/admin_builder` route (admin-only).
 - Fill in scenario title, description, and nodes (JSON structure).
-- Click **Save** — scenario is stored in `backend/scenarios/`.
+- Click **Save** - scenario is stored in `backend/scenarios/`.
 
 ### 🧩 Scenario JSON Example
 
