@@ -164,4 +164,4 @@ This project is licensed under the **MIT License**.
 
 ## 🤝 Built for Cyberthon.ai – 2025
 
-**RakshaSim** was developed for **Cyberthon.ai – 2025**, a national-level hackathon organized by the **Chandigarh Police (Cyber Crime Unit)** in partnership with **Infosys TechCohere, Chandigarh**.
+**RakshaSim** was developed for **Cyberthon.ai - 2025**, a national-level hackathon organized by the **Chandigarh Police (Cyber Crime Unit)** in partnership with **Infosys TechCohere, Chandigarh**.
